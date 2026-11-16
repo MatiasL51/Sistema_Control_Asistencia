@@ -12,3 +12,15 @@ data class LoginResponse(
     val is_admin: Boolean,
     val message: String?
 )
+// Lo que envías a Django para validar
+data class ValidateQrRequest(
+    val qr_token: String
+)
+
+// Lo que te responde Django tras la validación
+data class ValidateQrResponse(
+    val success: Boolean,
+    val message: String,
+    val rut: String?,
+    val timestamp: String?
+)
