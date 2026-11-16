@@ -3,45 +3,64 @@ package com.example.proyectoasistencia
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
-import com.example.proyectoasistencia.ui.theme.ProyectoAsistenciaTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
-            ProyectoAsistenciaTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
-                        modifier = Modifier.padding(innerPadding)
-                    )
+            MaterialTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    // Estado para controlar qué pantalla se muestra
+                    var currentScreen by remember { mutableStateOf<Screen>(Screen.Login) }
+                    var loggedUserRut by remember { mutableStateOf("") }
+
+                    when (val screen = currentScreen) {
+                        is Screen.Login -> {
+                            LoginScreen(
+                                onLoginSuccess = { rut ->
+                                    loggedUserRut = rut
+                                    currentScreen = Screen.Home
+                                }
+                            )
+                        }
+                        is Screen.Home -> {
+                            HomeScreen(
+                                userRut = loggedUserRut,
+                                onGenerateQrClick = {
+                                    currentScreen = Screen.QrGenerator // Cambiamos a la pantalla de QR
+                                },
+                                onLogoutClick = {
+                                    currentScreen = Screen.Login
+                                }
+                            )
+                        }
+                        is Screen.QrGenerator -> {
+                            QrScreen(
+                                userRut = loggedUserRut, // Le pasamos el RUT del usuario logueado
+                                onBackClick = {
+                                    currentScreen = Screen.Home // Volver al panel principal
+                                }
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
+// Sealed class auxiliar para manejar las rutas de las pantallas de forma sencilla
+sealed class Screen {
+    object Login : Screen()
+    object Home : Screen()
 
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    ProyectoAsistenciaTheme {
-        Greeting("Android")
-    }
+    object QrGenerator : Screen()
 }
