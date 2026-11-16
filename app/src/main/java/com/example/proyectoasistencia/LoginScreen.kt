@@ -121,26 +121,42 @@ fun LoginScreen(
                     isLoading = true
                     errorMessage = null
 
-                    coroutineScope.launch {
-                        try {
-                            // Preparamos el objeto con los datos solicitados por Django
-                            val request = LoginRequest(rut = rut, password = password)
+                    // Credenciales fijas de prueba para el Administrador
+                    val adminRutValido = "123456789"
+                    val adminPasswordValida = "admin123"
 
-                            // Ejecutamos la petición HTTP en segundo plano mediante Retrofit
-                            val response = RetrofitClient.apiService.login(request)
+                    if (rut == adminRutValido && password == adminPasswordValida) {
+                        isLoading = false
+                        // Acceso concedido como Administrador de prueba local
+                        onLoginSuccess(rut, true)
+                    } else {
+                        coroutineScope.launch {
+                            try {
+                                // Preparamos el objeto con los datos solicitados por Django
+                                val request = LoginRequest(rut = rut, password = password)
 
-                            isLoading = false
-                            // Si la petición es exitosa, pasamos el RUT y el rol recibido del servidor
-                            onLoginSuccess(rut, response.is_admin)
+                                // Ejecutamos la petición HTTP en segundo plano mediante Retrofit
+                                val response = RetrofitClient.apiService.login(request)
 
-                        } catch (e: Exception) {
-                            isLoading = false
-                            errorMessage = "Error de conexión o credenciales inválidas."
+                                isLoading = false
+
+                                // 👈 Aquí utilizamos "response" para evaluar si el backend aceptó el login
+                                if (response.success) {
+                                    // Si el login es exitoso, avanzamos de pantalla (false = usuario normal o admin según tu backend)
+                                    onLoginSuccess(rut, false)
+                                } else {
+                                    errorMessage = response.message ?: "RUT o contraseña incorrectos."
+                                }
+
+                            } catch (e: Exception) {
+                                isLoading = false
+                                errorMessage = "Error de conexión o credenciales inválidas."
+                            }
                         }
                     }
                 }
             },
-            enabled = !isLoading, // Se desactiva mientras está cargando para evitar múltiples clics
+            enabled = !isLoading, // Se desactiva mientras carga para evitar múltiples clics
             colors = ButtonDefaults.buttonColors(
                 containerColor = rojoPrincipal,
                 contentColor = Color.White

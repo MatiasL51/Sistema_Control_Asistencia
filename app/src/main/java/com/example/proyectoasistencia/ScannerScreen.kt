@@ -131,7 +131,7 @@ fun ScannerScreen(
                                                         coroutineScope.launch {
                                                             try {
                                                                 // Petición HTTP a Django a través de Retrofit
-                                                                val request = ValidateQrRequest(qr_token = qrValue)
+                                                                val request = ValidateQrRequest(rut = qrValue)
                                                                 val response = RetrofitClient.apiService.validateQr(request)
 
                                                                 if (response.success) {

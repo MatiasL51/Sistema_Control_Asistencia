@@ -21,6 +21,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
+import retrofit2.HttpException
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -46,6 +48,9 @@ fun AdminScreen(
     var newPassword by remember { mutableStateOf("") }
     var createMessage by remember { mutableStateOf<String?>(null) }
     var isError by remember { mutableStateOf(false) }
+
+    // Coroutine scope necesario para ejecutar las peticiones de Retrofit
+    val coroutineScope = rememberCoroutineScope()
 
     // Estado simulado para el historial de QRs usados
     val qrLogs = remember {
@@ -126,7 +131,7 @@ fun AdminScreen(
                                 newRut = it.filter { char -> char.isDigit() || char == 'k' || char == 'K' }
                                 createMessage = null
                             },
-                            label = { Text("RUT del usuario (ej: 12345678-9)") },
+                            label = { Text("RUT del usuario (ej: 123456789)") },
                             leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth(),
@@ -169,10 +174,35 @@ fun AdminScreen(
                                     isError = true
                                     createMessage = "El RUT ingresado no es válido."
                                 } else {
-                                    isError = false
-                                    createMessage = "¡Usuario con RUT $newRut creado con éxito!"
-                                    newRut = ""
-                                    newPassword = ""
+                                    // Lanzamos la petición de red con Retrofit hacia Django
+                                    coroutineScope.launch {
+                                        try {
+                                            val requestData = CreateUserRequest(
+                                                rut = newRut,
+                                                password = newPassword
+                                            )
+
+                                            // Llamada real al servicio backend
+                                            val response = RetrofitClient.apiService.createUser(requestData)
+
+                                            if (response.success) {
+                                                isError = false
+                                                createMessage = "¡Usuario con RUT $newRut creado y guardado en MySQL con éxito!"
+                                                newRut = ""
+                                                newPassword = ""
+                                            } else {
+                                                isError = true
+                                                createMessage = response.message ?: "No se pudo crear el usuario."
+                                            }
+                                        } catch (e: HttpException) {
+                                            isError = true
+                                            val errorBody = e.response()?.errorBody()?.string()
+                                            createMessage = "Error del servidor: $errorBody"
+                                        } catch (e: Exception) {
+                                            isError = true
+                                            createMessage = "Error de red: ${e.localizedMessage}"
+                                        }
+                                    }
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(
@@ -204,9 +234,8 @@ fun AdminScreen(
                             .fillMaxSize()
                             .padding(16.dp)
                     ) {
-                        // Dentro de tu AdminScreen, puedes agregar un botón de escaneo:
                         Button(
-                            onClick = { onOpenScannerClick() }, // Función para cambiar a la pantalla de Scanner
+                            onClick = { onOpenScannerClick() },
                             colors = ButtonDefaults.buttonColors(containerColor = rojoPrincipal),
                             modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp)
                         ) {
@@ -226,7 +255,6 @@ fun AdminScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
 
-                            // Botón interactivo para simular la llegada de un escaneo en vivo
                             OutlinedButton(
                                 onClick = {
                                     val currentTime = SimpleDateFormat("hh:mm a", Locale.getDefault()).format(Date())

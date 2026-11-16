@@ -5,7 +5,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 
 object RetrofitClient {
     // 10.0.2.2 apunta al localhost de tu PC desde el emulador de Android
-    private const val BASE_URL = "http://10.0.2.2:8000/"
+    private const val BASE_URL = "http://192.168.231.31:8080/"
 
     val apiService: ApiService by lazy {
         Retrofit.Builder()
