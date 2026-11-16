@@ -18,16 +18,22 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    // Estado para controlar qué pantalla se muestra
+                    // Estado para controlar qué pantalla se está mostrando actualmente
                     var currentScreen by remember { mutableStateOf<Screen>(Screen.Login) }
                     var loggedUserRut by remember { mutableStateOf("") }
 
-                    when (val screen = currentScreen) {
+                    // Manejador central de navegación (Router) basado en Jetpack Compose
+                    when (currentScreen) {
                         is Screen.Login -> {
                             LoginScreen(
-                                onLoginSuccess = { rut ->
+                                onLoginSuccess = { rut, isAdmin ->
                                     loggedUserRut = rut
-                                    currentScreen = Screen.Home
+                                    // Redirección condicional según el rol devuelto (Admin vs Usuario Regular)
+                                    currentScreen = if (isAdmin) {
+                                        Screen.AdminPanel
+                                    } else {
+                                        Screen.Home
+                                    }
                                 }
                             )
                         }
@@ -35,7 +41,7 @@ class MainActivity : ComponentActivity() {
                             HomeScreen(
                                 userRut = loggedUserRut,
                                 onGenerateQrClick = {
-                                    currentScreen = Screen.QrGenerator // Cambiamos a la pantalla de QR
+                                    currentScreen = Screen.QrGenerator
                                 },
                                 onLogoutClick = {
                                     currentScreen = Screen.Login
@@ -44,9 +50,31 @@ class MainActivity : ComponentActivity() {
                         }
                         is Screen.QrGenerator -> {
                             QrScreen(
-                                userRut = loggedUserRut, // Le pasamos el RUT del usuario logueado
+                                userRut = loggedUserRut,
                                 onBackClick = {
-                                    currentScreen = Screen.Home // Volver al panel principal
+                                    currentScreen = Screen.Home
+                                }
+                            )
+                        }
+                        is Screen.AdminPanel -> {
+                            AdminScreen(
+                                onOpenScannerClick = {
+                                    currentScreen = Screen.AdminScanner // Abre la cámara para escanear
+                                },
+                                onBackClick = {
+                                    currentScreen = Screen.Login // Cierra sesión al volver
+                                }
+                            )
+                        }
+                        is Screen.AdminScanner -> {
+                            ScannerScreen(
+                                onScanSuccess = { scannedQrContent ->
+                                    // Aquí puedes procesar el QR escaneado (ej. registrarlo o validarlo)
+                                    // Y luego regresar al panel de administrador
+                                    currentScreen = Screen.AdminPanel
+                                },
+                                onBackClick = {
+                                    currentScreen = Screen.AdminPanel
                                 }
                             )
                         }
@@ -57,10 +85,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Sealed class auxiliar para manejar las rutas de las pantallas de forma sencilla
+/**
+ * Sealed class para definir de forma limpia y segura las rutas de navegación de la app.
+ */
 sealed class Screen {
     object Login : Screen()
     object Home : Screen()
-
     object QrGenerator : Screen()
+    object AdminPanel : Screen()
+    object AdminScanner : Screen()
 }

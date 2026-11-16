@@ -19,17 +19,19 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(
-    onLoginSuccess: (String) -> Unit
+    onLoginSuccess: (String, Boolean) -> Unit
 ) {
     var rut by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
 
-    // Definición de un tono de rojo moderno (Material Red 700)
+    val coroutineScope = rememberCoroutineScope()
     val rojoPrincipal = Color(0xFFD32F2F)
 
     Column(
@@ -39,7 +41,6 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // Título en color rojo
         Text(
             text = "Bienvenido",
             fontSize = 32.sp,
@@ -48,7 +49,7 @@ fun LoginScreen(
         )
 
         Text(
-            text = "Ingresa tu RUT de para continuar",
+            text = "Ingresa tus credenciales para continuar",
             fontSize = 16.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 32.dp)
@@ -63,10 +64,8 @@ fun LoginScreen(
             },
             label = { Text("RUT (ej: 12345678-9)") },
             leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("12345678-9") },
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = rojoPrincipal,
                 focusedLabelColor = rojoPrincipal,
@@ -102,7 +101,6 @@ fun LoginScreen(
             )
         )
 
-        // Mensaje de error
         if (errorMessage != null) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
@@ -114,17 +112,35 @@ fun LoginScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Botón de Iniciar Sesión en rojo
+        // Botón de Iniciar Sesión conectado a Retrofit
         Button(
             onClick = {
                 if (rut.isBlank() || password.isBlank()) {
                     errorMessage = "Por favor, completa todos los campos."
-                } else if (rut.length < 7) {
-                    errorMessage = "El RUT ingresado no es válido."
                 } else {
-                    onLoginSuccess(rut)
+                    isLoading = true
+                    errorMessage = null
+
+                    coroutineScope.launch {
+                        try {
+                            // Preparamos el objeto con los datos solicitados por Django
+                            val request = LoginRequest(rut = rut, password = password)
+
+                            // Ejecutamos la petición HTTP en segundo plano mediante Retrofit
+                            val response = RetrofitClient.apiService.login(request)
+
+                            isLoading = false
+                            // Si la petición es exitosa, pasamos el RUT y el rol recibido del servidor
+                            onLoginSuccess(rut, response.is_admin)
+
+                        } catch (e: Exception) {
+                            isLoading = false
+                            errorMessage = "Error de conexión o credenciales inválidas."
+                        }
+                    }
                 }
             },
+            enabled = !isLoading, // Se desactiva mientras está cargando para evitar múltiples clics
             colors = ButtonDefaults.buttonColors(
                 containerColor = rojoPrincipal,
                 contentColor = Color.White
@@ -133,7 +149,15 @@ fun LoginScreen(
                 .fillMaxWidth()
                 .height(50.dp)
         ) {
-            Text(text = "Iniciar Sesión", fontSize = 16.sp)
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text(text = "Iniciar Sesión", fontSize = 16.sp)
+            }
         }
     }
 }
@@ -146,7 +170,7 @@ fun LoginScreenPreview() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            LoginScreen(onLoginSuccess = {})
+            LoginScreen(onLoginSuccess = { _, _ -> })
         }
     }
 }
