@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-nz*$$=%hcft3n^cd043&*4geugka=4qg5q8qm$48*069n%$p0m
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'api',
+    'django_extensions',  
 ]
 
 MIDDLEWARE = [
